@@ -10,7 +10,7 @@ namespace CWeaponInfoTests
     [StructLayout(LayoutKind.Explicit)]
     internal unsafe struct CPed
     {
-        [FieldOffset(0x10D8)] public CPedWeaponManager* weaponManager;
+        [FieldOffset(0x10B8)] public CPedWeaponManager* weaponManager;
     }
 
     [StructLayout(LayoutKind.Explicit)]

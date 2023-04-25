@@ -37,10 +37,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RAGENativeUI">
-      <HintPath>..\..\Rockstar Games\Grand Theft Auto V\RAGENativeUI.dll</HintPath>
+      <HintPath>C:\Program Files\Rockstar Games\Grand Theft Auto V\RAGENativeUI.dll</HintPath>
     </Reference>
     <Reference Include="RagePluginHookSDK">
-      <HintPath>..\..\Rockstar Games\Grand Theft Auto V\SDK\RagePluginHookSDK.dll</HintPath>
+      <HintPath>C:\Program Files\Rockstar Games\Grand Theft Auto V\SDK\RagePluginHookSDK.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -52,6 +52,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="Vincentsgm.Common">
+      <HintPath>C:\Program Files\Rockstar Games\Grand Theft Auto V\Vincentsgm.Common.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CAimingInfo.cs" />
@@ -70,11 +73,11 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>SET GTA="D:\Rockstar Games\Grand Theft Auto V"
+    <PostBuildEvent>SET GTA="C:\Program Files\Rockstar Games\Grand Theft Auto V"
 
 if exist %25GTA%25 (
-  copy /Y "$(TargetDir)$(ProjectName).dll" "D:\Rockstar Games\Grand Theft Auto V\Plugins\$(ProjectName).dll"
-  copy /Y "$(TargetDir)$(ProjectName).pdb" "D:\Rockstar Games\Grand Theft Auto V\Plugins\$(ProjectName).pdb"
+  copy /Y "$(TargetDir)$(ProjectName).dll" "C:\Program Files\Rockstar Games\Grand Theft Auto V\Plugins\$(ProjectName).dll"
+  copy /Y "$(TargetDir)$(ProjectName).pdb" "C:\Program Files\Rockstar Games\Grand Theft Auto V\Plugins\$(ProjectName).pdb"
 )</PostBuildEvent>
   </PropertyGroup>
 </Project>
