@@ -15,6 +15,8 @@ namespace CWeaponInfoTests
 {
     internal unsafe static class EntryPoint
     {
+        public static Ped MainPlayer => Game.LocalPlayer.Character;
+
         public static string CWeaponInfoPattern = "48 8B 05 ?? ?? ?? ?? 41 8B 1E";
         public static atArrayOfPtrs<CWeaponInfo>* Weapons;
         public static IntPtr WeaponsAddress;
@@ -85,6 +87,8 @@ namespace CWeaponInfoTests
                 SetWeaponFlag(newPlayerGun, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, true);
                 Game.DisplaySubtitle($"Address are the same: {(IntPtr)newPlayerGun == (IntPtr)CarbineRifle}");
                 if (Game.IsKeyDown(Keys.End)) Game.UnloadActivePlugin();*/
+
+                Natives.TASK_LOOK_AT_COORD(MainPlayer, MainPlayer.GetOffsetPositionRight(-5f), -1, 2, 4);
 
                 var weapon = Game.LocalPlayer.Character.Inventory.EquippedWeaponObject;
                 if (weapon)
