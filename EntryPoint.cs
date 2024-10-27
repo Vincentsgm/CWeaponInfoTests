@@ -8,6 +8,7 @@ using System.Drawing;
 using Rage;
 using static Rage.Native.NativeFunction;
 using System.Runtime.InteropServices;
+using EasyHook;
 
 [assembly: Rage.Attributes.Plugin("CWeaponInfoTests", EntryPoint = "CWeaponInfoTests.EntryPoint.Main", ExitPoint = "CWeaponInfoTests.EntryPoint.Exit", PrefersSingleInstance = true)]
 
@@ -16,6 +17,8 @@ namespace CWeaponInfoTests
     internal unsafe static class EntryPoint
     {
         public static Ped MainPlayer => Game.LocalPlayer.Character;
+        static bool SingleShot = false;
+        static CPed* PlayerPed;
 
         public static string CWeaponInfoPattern = "48 8B 05 ?? ?? ?? ?? 41 8B 1E";
         public static atArrayOfPtrs<CWeaponInfo>* Weapons;
@@ -45,6 +48,8 @@ namespace CWeaponInfoTests
 
             Weapons = (atArrayOfPtrs<CWeaponInfo>*)WeaponsAddress;
             CarbineRifle = GetWeaponInfo(WeaponHash.CarbineRifle);
+
+            InitTaskAimGunOnFootHooks();
 
             originalRNGOffset = CarbineRifle->FirstPersonRNGOffset;
             originalRNGRotationOffset = CarbineRifle->FirstPersonRNGRotationOffset;
@@ -82,13 +87,12 @@ namespace CWeaponInfoTests
             while (true)
             {
                 GameFiber.Yield();
+                PlayerPed = (CPed*)MainPlayer.MemoryAddress;
                 /*if (Game.LocalPlayer.Character.Inventory.EquippedWeapon == null) continue;
                 CWeaponInfo* newPlayerGun = ped->weaponManager->weaponInfo;
                 SetWeaponFlag(newPlayerGun, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, true);
                 Game.DisplaySubtitle($"Address are the same: {(IntPtr)newPlayerGun == (IntPtr)CarbineRifle}");
                 if (Game.IsKeyDown(Keys.End)) Game.UnloadActivePlugin();*/
-
-                Natives.TASK_LOOK_AT_COORD(MainPlayer, MainPlayer.GetOffsetPositionRight(-5f), -1, 2, 4);
 
                 var weapon = Game.LocalPlayer.Character.Inventory.EquippedWeaponObject;
                 if (weapon)
@@ -98,12 +102,10 @@ namespace CWeaponInfoTests
 
                 if (Game.IsKeyDown(Keys.G))
                 {
-                    SetWeaponFlag(CarbineRifle, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, true);
+                    SingleShot = !SingleShot;
+                    //SetWeaponFlag(CarbineRifle, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, true);
                 }
-                else if (Game.IsKeyDown(Keys.H))
-                {
-                    SetWeaponFlag(CarbineRifle, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, false);
-                }
+
                 if (Game.IsKeyDownRightNow(Keys.A))
                 {
                     CarbineRifle->FirstPersonRNGOffset = new Vector3(-0.07f, 0f, 0.07f);
@@ -138,6 +140,42 @@ namespace CWeaponInfoTests
             return null;
         }
 
+        private delegate long CTaskAimGunOnFoot__Firing_OnUpdate_delegate(CTask* task, IntPtr a2, IntPtr a3);
+        private static CTaskAimGunOnFoot__Firing_OnUpdate_delegate CTaskAimGunOnFoot__Firing_OnUpdate_orig;
+        private static LocalHook hkCTaskAimGunOnFoot__Firing_OnUpdate = null;
+        private static bool InitTaskAimGunOnFootHooks()
+        {
+            IntPtr addr = Game.FindPattern("48 8B C4 55 53 56 57 41 54 41 55 41 56 41 57 48 8D 68 A1 48 81 EC D8 00 00 00 48 8B F9");
+            if (addr == IntPtr.Zero)
+            {
+                Game.LogTrivial("Can't find address for CTaskAimGunOnFoot__Firing_OnUpdate");
+                return false;
+            }
+            CTaskAimGunOnFoot__Firing_OnUpdate_delegate detour = CTaskAimGunOnFoot__Firing_OnUpdate_Detour;
+            hkCTaskAimGunOnFoot__Firing_OnUpdate = LocalHook.Create(addr, detour, null);
+            hkCTaskAimGunOnFoot__Firing_OnUpdate.ThreadACL.SetExclusiveACL(new[] { 0 });
+            return true;
+        }
+
+        private static long CTaskAimGunOnFoot__Firing_OnUpdate_Detour(CTask* task, IntPtr a2, IntPtr a3)
+        {
+            var ped = task->Owner;
+            if (ped != PlayerPed) return CTaskAimGunOnFoot__Firing_OnUpdate_orig(task, a2, a3);
+            var wpnManager = ped->weaponManager;
+            var currentWeapon = wpnManager->weaponInfo;
+            bool isSingleShot = currentWeapon != null ? GetWeaponFlag(currentWeapon, eWeaponFlags1.OnlyFireOneShotPerTriggerPress) : false;
+            if (currentWeapon != null)
+            {
+                SetWeaponFlag(currentWeapon, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, SingleShot);
+            }
+            var result = CTaskAimGunOnFoot__Firing_OnUpdate_orig(task, a2, a3);
+            if (currentWeapon != null)
+            {
+                SetWeaponFlag(currentWeapon, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, isSingleShot);
+            }
+            return result;
+        }
+
         private static void ApplyDefaultRotations()
         {
             CarbineRifle->FirstPersonRNGOffset = originalRNGOffset;
@@ -155,6 +193,12 @@ namespace CWeaponInfoTests
         public static void Exit()
         {
             ApplyDefaultRotations();
+            if (hkCTaskAimGunOnFoot__Firing_OnUpdate != null)
+            {
+                hkCTaskAimGunOnFoot__Firing_OnUpdate.Dispose();
+                hkCTaskAimGunOnFoot__Firing_OnUpdate = null;
+            }
+            LocalHook.Release();
         }
 
         public static void ResetMovementClipset(this Ped ped) => Natives.RESET_PED_MOVEMENT_CLIPSET(ped, 0.0f);
@@ -195,16 +239,31 @@ namespace CWeaponInfoTests
             else weapon->WeaponFlags1 &= ~flag;
         }
 
+        public static bool GetWeaponFlag(CWeaponInfo* weapon, eWeaponFlags1 flag)
+        {
+            return weapon->WeaponFlags1.HasFlag(flag);
+        }
+
         public static void SetWeaponFlag(CWeaponInfo* weapon, eWeaponFlags2 flag, bool enable)
         {
             if (enable) weapon->WeaponFlags2 |= flag;
             else weapon->WeaponFlags2 &= ~flag;
         }
 
+        public static bool GetWeaponFlag(CWeaponInfo* weapon, eWeaponFlags2 flag)
+        {
+            return weapon->WeaponFlags2.HasFlag(flag);
+        }
+
         public static void SetWeaponFlag(CWeaponInfo* weapon, eWeaponFlags3 flag, bool enable)
         {
             if (enable) weapon->WeaponFlags3 |= flag;
             else weapon->WeaponFlags3 &= ~flag;
+        }
+
+        public static bool GetWeaponFlag(CWeaponInfo* weapon, eWeaponFlags3 flag)
+        {
+            return weapon->WeaponFlags3.HasFlag(flag);
         }
 
         public static void ShowWeaponFXGroups()

@@ -36,6 +36,9 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="EasyHook">
+      <HintPath>C:\Program Files\Rockstar Games\Grand Theft Auto V\EasyHook.dll</HintPath>
+    </Reference>
     <Reference Include="RAGENativeUI">
       <HintPath>C:\Program Files\Rockstar Games\Grand Theft Auto V\RAGENativeUI.dll</HintPath>
     </Reference>
@@ -61,6 +64,7 @@
     <Compile Include="CAmmoInfo.cs" />
     <Compile Include="CItemExplosionInfo.cs" />
     <Compile Include="CPed.cs" />
+    <Compile Include="CTask.cs" />
     <Compile Include="CWeaponFiringPatternAliases.cs" />
     <Compile Include="CWeaponInfo.cs" />
     <Compile Include="CWeaponTintSpecValues.cs" />
