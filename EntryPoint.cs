@@ -19,6 +19,7 @@ namespace CWeaponInfoTests
         public static Ped MainPlayer => Game.LocalPlayer.Character;
         static bool SingleShot = false;
         static CPed* PlayerPed;
+        static Vector3 LastAimPosition = Vector3.Zero;
 
         public static string CWeaponInfoPattern = "48 8B 05 ?? ?? ?? ?? 41 8B 1E";
         public static atArrayOfPtrs<CWeaponInfo>* Weapons;
@@ -37,6 +38,8 @@ namespace CWeaponInfoTests
 
         public static void Main()
         {
+            AppDomain.CurrentDomain.DomainUnload += (s, e) => Exit();
+
             IntPtr addr = Game.FindPattern(CWeaponInfoPattern);
 
             if (addr == IntPtr.Zero)
@@ -95,18 +98,18 @@ namespace CWeaponInfoTests
                 if (Game.IsKeyDown(Keys.End)) Game.UnloadActivePlugin();*/
 
                 var weapon = Game.LocalPlayer.Character.Inventory.EquippedWeaponObject;
-                if (weapon)
+                /*if (weapon)
                 {
                     Game.DisplaySubtitle($"Position: {weapon.Position}\nRotation: {weapon.Rotation}");
-                }
+                }*/
 
-                if (Game.IsKeyDown(Keys.G))
+                if (Game.IsKeyDown(Keys.X))
                 {
                     SingleShot = !SingleShot;
                     //SetWeaponFlag(CarbineRifle, eWeaponFlags1.OnlyFireOneShotPerTriggerPress, true);
                 }
 
-                if (Game.IsKeyDownRightNow(Keys.A))
+                /*if (Game.IsKeyDownRightNow(Keys.A))
                 {
                     CarbineRifle->FirstPersonRNGOffset = new Vector3(-0.07f, 0f, 0.07f);
                     CarbineRifle->FirstPersonRNGRotationOffset = new Vector3(-6.5f, -1f, -4.7f);
@@ -117,13 +120,17 @@ namespace CWeaponInfoTests
                     CarbineRifle->FirstPersonScopeRotationOffset = new Vector3(0f, 0f, 0.0f);
                     CarbineRifle->FirstPersonScopeAttachmentRotationOffset = new Vector3(0f, 0f, 0f);
 
-                    /*Game.LocalPlayer.Character.MovementAnimationSet = "weapons@heavy@rpg";
-                    SetWeaponMovementClipset(Game.LocalPlayer.Character, "weapons@rifle@lo@carbine@stealth");*/
+                    //Game.LocalPlayer.Character.MovementAnimationSet = "weapons@heavy@rpg";
+                    //SetWeaponMovementClipset(Game.LocalPlayer.Character, "weapons@rifle@lo@carbine@stealth");
+                    CarbineRifle->WeaponFlags1 |= eWeaponFlags1.StaticReticulePosition;
+                    Natives.GET_HUD_SCREEN_POSITION_FROM_WORLD_POSITION(LastAimPosition, out float newReticleHudPositionX, out float newReticleHudPositionY);
+                    CarbineRifle->ReticuleHudPosition = new Vector2(newReticleHudPositionX, newReticleHudPositionY);
                 }
                 else
                 {
                     ApplyDefaultRotations();
-                }
+                    CarbineRifle->ReticuleHudPosition = new Vector2(0.5f, 0.5f);
+                }*/
             }
         }
 
@@ -151,6 +158,8 @@ namespace CWeaponInfoTests
                 Game.LogTrivial("Can't find address for CTaskAimGunOnFoot__Firing_OnUpdate");
                 return false;
             }
+            CTaskAimGunOnFoot__Firing_OnUpdate_orig = Marshal.GetDelegateForFunctionPointer<CTaskAimGunOnFoot__Firing_OnUpdate_delegate>(addr);
+
             CTaskAimGunOnFoot__Firing_OnUpdate_delegate detour = CTaskAimGunOnFoot__Firing_OnUpdate_Detour;
             hkCTaskAimGunOnFoot__Firing_OnUpdate = LocalHook.Create(addr, detour, null);
             hkCTaskAimGunOnFoot__Firing_OnUpdate.ThreadACL.SetExclusiveACL(new[] { 0 });
